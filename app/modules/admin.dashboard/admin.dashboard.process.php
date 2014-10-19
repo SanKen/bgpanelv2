@@ -25,29 +25,30 @@
  * @link		http://www.bgpanel.net/
  */
 
-define('LICENSE', 'GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007');
-
 /**
- * Bright Game Panel Init
+ * Load Plugin Controller
  */
-require( 'init.app.php' );
 
-/**
- * Define Display Language
- */
-if ( isset($_SESSION['LANG']) ) {
-	Core_Lang::setLanguage( $_SESSION['LANG'] );
-}
-else if ( isset($_COOKIE['LANG']) ) {
-	Core_Lang::setLanguage( $_COOKIE['LANG'] );
+require( MODS_DIR . '/admin.dashboard/admin.dashboard.controller.class.php' );
+
+// Init Controller
+$controller = new BGP_Controller_Admin_Dashboard();
+
+
+// Get the method
+if ( isset($_POST['task']) ) {
+	$task = $_POST['task'];
 }
 else {
-	Core_Lang::setLanguage( CONF_DEFAULT_LOCALE );
+	$task = 'None';
 }
 
-/**
- * Load System Routing Definitions
- */
-require( APP_DIR . '/routing.core.php' );
 
-?>
+// Call the method
+switch ($task)
+{
+	default:
+		Flight::redirect('/400');
+}
+
+Flight::redirect('/403');

@@ -25,29 +25,21 @@
  * @link		http://www.bgpanel.net/
  */
 
-define('LICENSE', 'GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007');
-
-/**
- * Bright Game Panel Init
- */
-require( 'init.app.php' );
-
-/**
- * Define Display Language
- */
-if ( isset($_SESSION['LANG']) ) {
-	Core_Lang::setLanguage( $_SESSION['LANG'] );
-}
-else if ( isset($_COOKIE['LANG']) ) {
-	Core_Lang::setLanguage( $_COOKIE['LANG'] );
-}
-else {
-	Core_Lang::setLanguage( CONF_DEFAULT_LOCALE );
+if ( !class_exists('BGP_Module')) {
+	trigger_error('Module_Admin_Dashboard -> BGP_Module is missing !');
 }
 
 /**
- * Load System Routing Definitions
+ * Admin Dashboard Module
+ * by Nikita Rousseau
  */
-require( APP_DIR . '/routing.core.php' );
 
-?>
+class BGP_Module_Admin_Dashboard extends BGP_Module {
+
+	function __construct( )	{
+
+		// Call parent constructor
+		parent::__construct( 'admin.dashboard' );
+	}
+
+}

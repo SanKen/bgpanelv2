@@ -25,29 +25,64 @@
  * @link		http://www.bgpanel.net/
  */
 
-define('LICENSE', 'GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007');
+/**
+ * Load Plugin
+ */
+
+require( MODS_DIR . '/admin.dashboard/admin.dashboard.class.php' );
+
+$module = new BGP_Module_Admin_Dashboard();
 
 /**
- * Bright Game Panel Init
+ * Call GUI Builder
  */
-require( 'init.app.php' );
+$gui = new Core_GUI( $module );
 
 /**
- * Define Display Language
+ * Javascript Generator
  */
-if ( isset($_SESSION['LANG']) ) {
-	Core_Lang::setLanguage( $_SESSION['LANG'] );
-}
-else if ( isset($_COOKIE['LANG']) ) {
-	Core_Lang::setLanguage( $_COOKIE['LANG'] );
-}
-else {
-	Core_Lang::setLanguage( CONF_DEFAULT_LOCALE );
-}
+$js = new Core_JS_GUI();
 
 /**
- * Load System Routing Definitions
+ * Build Page Header
  */
-require( APP_DIR . '/routing.core.php' );
+$gui->getHeader();
+
+/**
+ * PAGE BODY
+ */
+//------------------------------------------------------------------------------------------------------------+
+?>
+					<!-- CONTENTS -->
+					<div class="row">
+
+					</div>
+					<!-- END: CONTENTS -->
+
+					<!-- SCRIPT -->
+<?php
+
+/**
+ * Generate AngularJS Code
+ */
+
+$js->getAngularController( '', 'admin/dashboard', array());
+
+?>
+					<!-- END: SCRIPT -->
+
+<?php
+//------------------------------------------------------------------------------------------------------------+
+/**
+ * END: PAGE BODY
+ */
+
+/**
+ * Build Page Footer
+ */
+$gui->getFooter();
+
+// Clean Up
+unset( $module, $gui, $js );
 
 ?>

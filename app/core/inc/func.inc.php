@@ -25,29 +25,13 @@
  * @link		http://www.bgpanel.net/
  */
 
-define('LICENSE', 'GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007');
 
-/**
- * Bright Game Panel Init
- */
-require( 'init.app.php' );
 
-/**
- * Define Display Language
- */
-if ( isset($_SESSION['LANG']) ) {
-	Core_Lang::setLanguage( $_SESSION['LANG'] );
+function bgp_routing_require_mod( $mod_path ) {
+	if ( file_exists($mod_path) ) {
+		require( $mod_path );
+	}
+	else {
+		Flight::notFound();
+	}
 }
-else if ( isset($_COOKIE['LANG']) ) {
-	Core_Lang::setLanguage( $_COOKIE['LANG'] );
-}
-else {
-	Core_Lang::setLanguage( CONF_DEFAULT_LOCALE );
-}
-
-/**
- * Load System Routing Definitions
- */
-require( APP_DIR . '/routing.core.php' );
-
-?>
