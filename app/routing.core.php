@@ -58,6 +58,7 @@ Flight::route('GET|POST /', function() {
 		Flight::redirect('/login');
 	}
 
+	// The user is already logged in
 	// Redirect to the Dashboard
 	switch (Core_AuthService::getSessionPrivilege()) {
 		case 'Admin':
@@ -65,7 +66,7 @@ Flight::route('GET|POST /', function() {
 
 		case 'User':
 			Flight::redirect('/user/dashboard');
-		
+
 		default:
 			// Invalid Privilege
 			Core_AuthService::logout();
@@ -98,101 +99,143 @@ Flight::route('GET /logout', function() {
 
 
 
-// [LOGIN] VIEW
-Flight::route('GET /login', function() {
-	$mod_path = MODS_DIR . '/login/login.php';
-	bgp_routing_require_mod( $mod_path );
-});
+// [LOGIN] MODULE
+Flight::route('GET|POST /login(/@page)', function( $page ) {
 
-// [LOGIN] CONTROLLER
-Flight::route('POST /login/process', function() {
-	$mod_path = MODS_DIR . '/login/login.process.php';
-	bgp_routing_require_mod( $mod_path );
-});
-
-
-
-// [ADMIN] Dynamically load the module VIEW
-Flight::route('GET /admin/@module', function( $module ) {
-
-	// Test Access Perms
-	if ( Core_AuthService::isAdmin() ) {
-		$mod_path = MODS_DIR . '/' . 'admin.' . $module . '/' . 'admin.' . $module . '.php';
-		bgp_routing_require_mod( $mod_path );
-	}
-	else{
-		Flight::redirect('/403');
-	}
-});
-
-// [ADMIN] CONTROLLER
-Flight::route('POST /admin/@module/process', function( $module ) {
-
-	// Test Access Perms
-	if ( Core_AuthService::isAdmin() ) {
-		$mod_path = MODS_DIR . '/' . 'admin.' . $module . '/' . 'admin.' . $module . '.process.php';
-		bgp_routing_require_mod( $mod_path );
-	}
-	else{
-		Flight::redirect('/403');
-	}
-});
-
-
-
-// [USER] VIEW
-Flight::route('GET /user/@module', function( $module ) {
-
-	// Test Access Perms
-	if ( Core_AuthService::isUser() ) {
-		$mod_path = MODS_DIR . '/' . 'user.' . $module . '/' . 'user.' . $module . '.php';
-		bgp_routing_require_mod( $mod_path );
-	}
-	else{
-		Flight::redirect('/403');
-	}
-});
-
-// [USER] CONTROLLER
-Flight::route('POST /user/@module/process', function( $module ) {
-
-	// Test Access Perms
-	if ( Core_AuthService::isUser() ) {
-		$mod_path = MODS_DIR . '/' . 'user.' . $module . '/' . 'user.' . $module . '.process.php';
-		bgp_routing_require_mod( $mod_path );
-	}
-	else{
-		Flight::redirect('/403');
-	}
-});
-
-
-
-// [COMMON] VIEW (with authentication)
-Flight::route('GET /@module', function( $module ) {
 	$authService = Core_AuthService::getAuthService();
 
-	// Test Access Perms
 	if ($authService->getSessionValidity() == TRUE) {
-		$mod_path = MODS_DIR . '/' . $module . '/' . $module . '.php';
-		bgp_routing_require_mod( $mod_path );
+		// The user is already logged in
+
+		Flight::redirect('/');
 	}
-	else{
-		Flight::redirect('/403');
+	else {
+
+		// Forgot passwd? Page
+		if ( !empty($page) && $page == 'password' ) {
+			$mod_path = MODS_DIR . '/login/login.password.php';
+		}
+
+		// Login Controller
+		else if ( !empty($page) && $page == 'process' ) {
+			$mod_path = MODS_DIR . '/login/login.process.php';
+		}
+
+		// Login View
+		else {
+			$mod_path = MODS_DIR . '/login/login.php';
+		}
+
+		bgp_routing_require_mod( $mod_path );
 	}
 });
 
-// [COMMON] CONTROLLER (with authentication)
-Flight::route('POST /@module/process', function( $module ) {
-	$authService = Core_AuthService::getAuthService();
 
-	// Test Access Perms
-	if ($authService->getSessionValidity() == TRUE) {
-		$mod_path = MODS_DIR . '/' . $module . '/' . $module . '.process.php';
-		bgp_routing_require_mod( $mod_path );
-	}
-	else{
-		Flight::redirect('/403');
+
+// Dynamically load the module VIEW | CONTROLLER
+// Note that the page "process" is the module controller
+Flight::route('GET|POST /@role(/@module(/@page))', function( $role, $module, $page ) {
+
+	switch ($role)
+	{
+		// [ADMIN]
+		case 'admin':
+
+			// Test Access Perms
+			if ( Core_AuthService::isAdmin() && !empty($module) )
+			{
+				// Switch the view depending the task
+				if ( !empty($page) ) {
+					// Admin Controller OR subPage Invoked
+					$mod_path = MODS_DIR . '/' . 'admin.' . $module . '/' . 'admin.' . $module . '.' . $page . '.php';
+				}
+				else {
+					// Admin View Invoked
+					$mod_path = MODS_DIR . '/' . 'admin.' . $module . '/' . 'admin.' . $module . '.php';
+				}
+
+				// Call the module
+				bgp_routing_require_mod( $mod_path );
+			}
+			else if ( Core_AuthService::isUser() ) {
+				// A regular user has tried to access admin components
+				// Forbidden
+				Flight::redirect('/403');
+			}
+			else {
+				$return = '/' . str_replace( BASE_URL, '', REQUEST_URI );
+				Flight::redirect( '/login?page=' . $return );
+			}
+			break;
+
+		// [USER]
+		case 'user':
+
+			if ( Core_AuthService::isUser() && !empty($module) )
+			{
+
+				// MAINTENANCE CHECKER
+				// Logout the user
+				if ( BGP_MAINTENANCE_MODE == 1 ) {
+					Core_AuthService::logout();
+					Flight::redirect('/503'); // If the maintenance mode is ON, we drop the user.
+				}
+
+				if ( !empty($page) ) {
+					$mod_path = MODS_DIR . '/' . 'user.' . $module . '/' . 'user.' . $module . '.' . $page . '.php';
+				}
+				else {
+					$mod_path = MODS_DIR . '/' . 'user.' . $module . '/' . 'user.' . $module . '.php';
+				}
+
+				bgp_routing_require_mod( $mod_path );
+			}
+			else if ( Core_AuthService::isAdmin() ) {
+				// Forbidden
+				Flight::redirect('/403');
+			}
+			else {
+				$return = '/' . str_replace( BASE_URL, '', REQUEST_URI );
+				Flight::redirect( '/login?page=' . $return );
+			}
+			break;
+
+		// [COMMON]
+		default:
+
+			// Switch the vars
+			if (!empty($module)) {
+				$page = $module;
+			}
+			$module = $role;
+			unset($role);
+
+			// MAINTENANCE CHECKER
+			if ( Core_AuthService::getSessionPrivilege() != 'Admin' ) {
+				if ( BGP_MAINTENANCE_MODE == 1 ) {
+					Core_AuthService::logout();
+					Flight::redirect('/503');
+				}	
+			}
+
+			$authService = Core_AuthService::getAuthService();
+
+			if ( $authService->getSessionValidity() == TRUE && !empty($module) )
+			{
+				if ( !empty($page) ) {
+					$mod_path = MODS_DIR . '/' . $module . '/' . $module . '.' . $page . '.php';
+				}
+				else {
+					$mod_path = MODS_DIR . '/' . $module . '/' . $module . '.php';
+				}
+
+				bgp_routing_require_mod( $mod_path );
+			}
+			else {
+				$return = '/' . str_replace( BASE_URL, '', REQUEST_URI );
+				Flight::redirect( '/login?page=' . $return );
+			}
+			break;
 	}
 });
 

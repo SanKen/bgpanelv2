@@ -230,25 +230,62 @@ class Core_GUI
 		{
 //------------------------------------------------------------------------------------------------------------+
 ?>
-	                <li class="dropdown">
-	                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-	                        <i class="fa fa-user fa-fw"></i>  <i class="fa fa-caret-down"></i>
-	                    </a>
-	                    <ul class="dropdown-menu dropdown-user">
-	                        <li>
-	                        	<a href="#"><i class="fa fa-user fa-fw"></i>&nbsp;User Profile</a>
-	                        </li>
-	                        <li>
-	                        	<a href="#"><i class="fa fa-gear fa-fw"></i>&nbsp;Settings</a>
-	                        </li>
-	                        <li class="divider"></li>
-	                        <li>
-	                        	<a href="./logout"><i class="fa fa-sign-out fa-fw"></i>&nbsp;Logout</a>
-	                        </li>
-	                    </ul>
-	                    <!-- /.dropdown-user -->
-	                </li>
+					<li class="dropdown">
+						<a class="dropdown-toggle" data-toggle="dropdown" href="#">
+							<i class="fa fa-bell fa-fw"></i>  <i class="fa fa-caret-down"></i>
+						</a>
+						<ul class="dropdown-menu dropdown-alerts" role="menu">
+							<li>
+								<a href="#">
+									<div>
+										<i class="fa fa-comment fa-fw"></i> New Comment
+										<span class="pull-right text-muted small">4 minutes ago</span>
+									</div>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a href="#">
+									<div>
+										<i class="fa fa-twitter fa-fw"></i> 3 New Followers
+										<span class="pull-right text-muted small">12 minutes ago</span>
+									</div>
+								</a>
+							</li>
+							<li class="divider"></li>
+							<li>
+								<a class="text-center" href="#">
+									<strong>See All Alerts</strong>
+									<i class="fa fa-angle-right"></i>
+								</a>
+							</li>
+						</ul>
+						<!-- /.dropdown-alerts -->
+					</li>
+					<li class="dropdown">
+						<a class="dropdown-toggle" data-toggle="dropdown" href="#">
+							<i class="fa fa-user fa-fw"></i>  <i class="fa fa-caret-down"></i>
+						</a>
+						<ul class="dropdown-menu dropdown-user" role="menu">
+							<li role="presentation" class="dropdown-header"><?php
+								echo htmlspecialchars(
+									$_SESSION['INFORMATION']['firstname'] .
+									' ' .
+									$_SESSION['INFORMATION']['lastname'] .
+									' @' .
+									$_SESSION['USERNAME']
+									, ENT_QUOTES );
+							?></li>
+							<li>
+								<a href="./myaccount"><i class="fa fa-gear fa-fw"></i>&nbsp;<?php echo T_('Settings'); ?></a>
+							</li>
+						</ul>
+						<!-- /.dropdown-user -->
+					</li>
 	                <!-- /.dropdown -->
+	                <li>
+	                	<a href="./logout"><i class="fa fa-sign-out fa-fw"></i></a>
+	                </li>
 <?php
 //------------------------------------------------------------------------------------------------------------+
 		}
@@ -278,16 +315,176 @@ class Core_GUI
 					<div class="sidebar-nav navbar-collapse">
 						<ul class="nav" id="side-menu">
 							<li>
-								<a href="./"><i class="fa fa-dashboard fa-fw"></i>&nbsp;Dashboard</a>
+								<a href="./"><i class="fa fa-dashboard fa-fw"></i>&nbsp;<?php echo T_('Dashboard'); ?></a>
+							</li>
+							<li>
+								<a href="#"><i class="fa fa-hdd-o fa-fw"></i>&nbsp;Test<span class="fa arrow"></span></a>
+								<ul class="nav nav-second-level">
+									<li>
+										<a href="#">Test</a>
+									</li>
+									<li>
+										<a href="#">SubTest</a>
+									</li>
+								</ul>
+								<!-- /.nav-second-level -->
 							</li>
 						</ul>
 					</div>
 					<!-- /.sidebar-collapse -->
+
+
+<?php
+	exit( print_r( $this->getSideBarItems() ));
+?>
+
+
 				</div>
 				<!-- END: SIDEBAR -->
 
 <?php
 //------------------------------------------------------------------------------------------------------------+
+	}
+
+
+
+	/**
+	 * Get Sidebar Items
+	 *
+	 * @param none
+	 * @return array
+	 * @access public
+	 */
+	private function getSideBarItems()
+	{
+		$privilege = Core_AuthService::getSessionPrivilege();
+		$manifestFiles = array();
+
+		// Read all "sidebar.gui.xml" files under the "app/modules" directory
+		$handle = opendir( MODS_DIR );
+
+		if ($handle) {
+
+			// Foreach modules
+			while (false !== ($entry = readdir($handle))) {
+
+				// Dump specific directories
+				if ($entry != "." && $entry != "..") {
+
+					// Analyze module name
+					$parts = explode('.', $entry);
+
+					if (!empty( $parts[1] )) {
+						$role = $parts[0];
+						$module = $parts[1];
+					}
+					else {
+						$role = NULL;
+						$module = $parts[0];
+					}
+
+					// Case: "admin.module" OR "user.module"
+					if (!empty($role) && $privilege == ucfirst($role)) {
+
+						// Get the manifest
+						$manifest = MODS_DIR . '/' . $role . '.' . $module . '/sidebar.gui.xml';
+
+						if (is_file( $manifest )) {
+							$manifestFiles[] = simplexml_load_file( $manifest ); // Store the object
+						}
+					}
+
+					// Case: "module"
+					else {
+
+						// Get the manifest
+						$manifest = MODS_DIR . '/' . $module . '/sidebar.gui.xml';
+
+						if (is_file( $manifest )) {
+							$manifestFiles[] = simplexml_load_file( $manifest );
+						}
+					}
+				}
+			}
+
+			closedir($handle);
+		}
+
+		if (!empty($manifestFiles)) {
+
+			$items = array();
+
+			// XML Object to Array
+
+			foreach( $manifestFiles as $manifest ) {
+
+				$txt  = (string)$manifest->{'module_sidebar'}->txt;
+				$rank = (int)$manifest->{'module_sidebar'}->rank;
+
+				$item[$txt]['rank'] = $rank;
+				$item[$txt]['href'] = (string)$manifest->{'module_sidebar'}->href;
+				$item[$txt]['icon'] = (string)$manifest->{'module_sidebar'}->icon;
+
+				// Processing sub-menu if any
+
+				if ( !empty($manifest->{'module_sidebar'}->{'sub_menu'}) ) {
+					
+					$sub_menu = (array)$manifest->{'module_sidebar'}->{'sub_menu'};
+
+					foreach ($sub_menu as $sub_menu_key => $sub_menu_item) {
+
+						$sub_menu_item = (array)$sub_menu_item;
+
+						foreach ($sub_menu_item as $sub_menu_item_href => $sub_menu_item_link) {
+
+							$sub_menu_item_href = (string)$sub_menu_item_href;
+
+							// Push to array
+
+							$item[$txt]['sub_menu'][$sub_menu_key][$sub_menu_item_href]['href'] = (string)$sub_menu_item_link->{'href'};
+						}
+					}
+				}
+				else {
+
+					$item[$txt]['sub_menu'] = array();
+				}
+
+				$items = array_merge($items, $item); // Push
+			}
+
+			$sideBarItems = array();
+
+			// Sort Array
+
+			foreach ($items as $key => $item) {
+
+				$rank = $item['rank'];
+				unset($item['rank']);
+
+				// Free key
+				if (!isset($sideBarItems[$rank])) {
+
+					$sideBarItems[$rank][$key] = $item; // Push
+				}
+				// Key not available
+				else {
+
+					$i = 1;
+					while ( isset($sideBarItems[ $rank + $i ]) ) {
+						$i++;
+					}
+
+					$sideBarItems[ $rank + $i ][$key] = $item; // Push
+				}
+			}
+
+			// Return Array
+
+			return $sideBarItems;
+		}
+
+		return array();
 	}
 
 

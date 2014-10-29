@@ -38,20 +38,25 @@ if (!defined('LICENSE'))
  *
  * Turn off all error reporting:
  * error_reporting(0);
+ * ini_set('display_errors', 0);
  *
  * Report all PHP errors:
  * error_reporting(E_ALL);
+ * ini_set('display_errors', 1);
  */
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 
 // Start new or resume existing session
 session_start();
 
 
+define('BASE_URL', dirname($_SERVER['PHP_SELF']).'/');
+define('REQUEST_URI', $_SERVER["REQUEST_URI"]);
+
 // FILE AND DIRECTORY CONSTANTS
 define('BASE_DIR', realpath(dirname(__FILE__)));
-define('BASE_URL', dirname($_SERVER['PHP_SELF']).'/');
 
 define('APP_DIR', BASE_DIR . '/app');
 	define('CRYPTO_DIR', APP_DIR . '/crypto');
@@ -160,8 +165,10 @@ try {
 
 		$sth->execute();
 
-		while ($CONFIG = $sth->fetch(PDO::FETCH_ASSOC)) {
-			define( strtoupper( 'BGP_' . $CONFIG['setting'] ), $CONFIG['value'] );
+		$CONFIG = $sth->fetchAll(PDO::FETCH_ASSOC);
+
+		foreach ($CONFIG as $row) {
+			define( strtoupper( 'BGP_' . $row['setting'] ), $row['value'] );
 		}
 
 		unset($dbh, $sth);
@@ -199,6 +206,65 @@ if ( ENV_RUNTIME == 'DEFAULT' ) {
 	<?php
 		die();
 	}
+}
+
+/**
+ * LOGGING Configuration
+ * Apache Log4php configuration
+ *
+ * @link: http://logging.apache.org/log4php/docs/configuration.html
+ */
+if ( CONF_LOGS_DIR != 'default' && is_writable( CONF_LOGS_DIR ) ) {
+
+	// Override default configuration
+	define( 'REAL_LOGGING_DIR', CONF_LOGS_DIR );
+}
+else {
+
+	// Default configuration
+	define( 'REAL_LOGGING_DIR', LOGS_DIR );
+}
+
+function bgp_get_log4php_conf_array( ) {
+	return array(
+		'rootLogger' => array(
+			'appenders' => array('default')
+		),
+		'loggers' => array(
+			'coreLogger' => array(
+				'additivity' => false,
+				'appenders' => array('coreAppender')
+			)
+		),
+		'appenders' => array(
+			'default' => array(
+				'class' => 'LoggerAppenderFile',
+				'layout' => array(
+					'class' => 'LoggerLayoutPattern',
+					'params' => array(
+						'conversionPattern' => '[%date{Y-m-d H:i:s,u}] %-5level %-5.5session{COM} %-12session{USERNAME} %-3session{ID} %-15.15server{REMOTE_ADDR} %-35server{REQUEST_URI} %-35class %-20method "%msg"%n'
+					)
+				),
+				'params' => array(
+					'file' => REAL_LOGGING_DIR . '/' . date('Y-m-d') . '.txt',
+					'append' => true
+				)
+			),
+			'coreAppender' => array(
+				'class' => 'LoggerAppenderFile',
+				'layout' => array(
+					'class' => 'LoggerLayoutPattern',
+					'params' => array(
+						'conversionPattern' => '[%date{Y-m-d H:i:s,u}] %-5level Core System V2 localhost %-35class %-20method "%msg"%n'
+					)
+				),
+				'params' => array(
+					'file' => REAL_LOGGING_DIR . '/' . date('Y-m-d') . '.core.txt',
+					'append' => true
+				)
+			)
+		)
+	);
 }
 
 // Clean Up

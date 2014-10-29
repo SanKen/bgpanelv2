@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GUI Sidebar Manifest -->
+<bgp_module>
+	<module_sidebar>
+		<rank>1</rank>
+		<txt>Configuration</txt>
+		<href>#</href>
+		<icon>fa fa-wrench-o fa-fw</icon>
+
+		<sub_menu>
+			<general>
+				<system-settings>
+					<href>./admin/config</href>
+				</system-settings>
+			</general>
+			<misc>
+				<cron-settings>
+					<href>./admin/config/cron</href>
+				</cron-settings>
+				<api-key>
+					<href>./admin/config/cron</href>
+				</api-key>
+			</misc>
+		</sub_menu>
+	</module_sidebar>
+</bgp_module>

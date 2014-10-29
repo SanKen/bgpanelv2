@@ -34,10 +34,18 @@ require( MODS_DIR . '/login/login.controller.class.php' );
 // Init Controller
 $loginController = new BGP_Controller_Login();
 
+/**
+ * Plug-in Dependencies
+ */
+require( LIBS_DIR . '/securimage/securimage.php' );
+
 
 // Get the method
 if ( isset($_POST['task']) ) {
 	$task = $_POST['task'];
+}
+else if ( isset($_GET['task']) ) {
+	$task = $_GET['task'];
 }
 else {
 	$task = 'None';
@@ -48,7 +56,52 @@ else {
 switch ($task)
 {
 	case 'authenticateUser':
-		echo $loginController->authenticateUser( $_POST );
+		// Verify that the user is not banned
+		$authService = Core_AuthService::getAuthService();
+
+		if ( $authService->isBanned() == FALSE ) {
+
+			echo $loginController->authenticateUser( $_POST );
+		}
+		else {
+			$authService->incrementSecCount(); // Extend ban duration
+
+			header( Core_Http_Status_Codes::httpHeaderFor( 403 ) );
+			echo Core_Http_Status_Codes::getMessageForCode( 403 );
+		}
+		exit( 0 );
+
+	case 'getCaptcha':
+		$img = new Securimage();
+
+		if (!empty($_GET['namespace'])) $img->setNamespace($_GET['namespace']);
+
+		$img->show();  // outputs the image and content headers to the browser
+
+		exit( 0 );
+
+	case 'sendNewPassword':
+		$authService = Core_AuthService::getAuthService();
+
+		if ( $authService->isBanned() == FALSE ) {
+
+			$image = new Securimage();
+
+			if ( $image->check( $_POST['captcha'] ) == TRUE ) {
+				// Good captcha
+				echo $loginController->sendNewPassword( $_POST, TRUE );
+			}
+			else {
+				// Bad captcha
+				echo $loginController->sendNewPassword( $_POST, FALSE );
+			}
+		}
+		else {
+			$authService->incrementSecCount(); // Extend ban duration
+
+			header( Core_Http_Status_Codes::httpHeaderFor( 403 ) );
+			echo Core_Http_Status_Codes::getMessageForCode( 403 );
+		}
 		exit( 0 );
 
 	default:

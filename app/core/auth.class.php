@@ -87,6 +87,11 @@ class Core_AuthService
 	 */
 	public static function logout() {
 
+		// Log Event
+		Logger::configure( bgp_get_log4php_conf_array() );
+		$logger = Logger::getLogger( 'authLogger' );
+		$logger->info('Log out.');
+
 		$_SESSION = array(); // Destroy session variables
 		session_destroy();
 
@@ -172,6 +177,97 @@ class Core_AuthService
 	}
 
 	/**
+	 * Security Counter
+	 *
+	 * May ban a user from being authenticated after unsuccessful attempts
+	 *
+	 * @param none
+	 * @return none
+	 * @access public
+	 */
+	public function incrementSecCount() {
+
+		// Increment security counter
+		if ( empty($this->session['SEC_COUNT']) ) {
+			$this->session['SEC_COUNT'] = 1;
+		}
+		else {
+			$this->session['SEC_COUNT'] += 1;
+		}
+
+		// Ban the user if too many attempts have been done
+		// or the user is already banned but keeps trying
+		if ( ($this->session['SEC_COUNT'] > CONF_SEC_LOGIN_ATTEMPTS) || !empty($this->session['SEC_BAN']) ) {
+			// Time to ban this session
+
+			// Reset counter
+			unset($this->session['SEC_COUNT']);
+
+			// Set ban
+			$this->session['SEC_BAN'] = time() + CONF_SEC_BAN_DURATION; // Mark the end of the ban
+
+			// Log Event
+			Logger::configure( bgp_get_log4php_conf_array() );
+			$logger = Logger::getLogger( 'authLogger' );
+			$logger->info('Session banned.');
+		}
+
+		// Push to global $_SESSION
+		$_SESSION = $this->session;
+	}
+
+	/**
+	 * Security Counter - Reset Mechanism
+	 *
+	 * Reset the internal security counter
+	 *
+	 * @param none
+	 * @return none
+	 * @access public
+	 */
+	public function rsSecCount() {
+
+		if ( !empty($this->session['SEC_COUNT']) ) {
+			// Reset counter
+			unset($this->session['SEC_COUNT']);
+		}
+
+		// Push to global $_SESSION
+		$_SESSION = $this->session;
+	}
+
+	/**
+	 * Check If the Current Session Is Banned
+	 *
+	 * Automatically remove a ban if this one has expired
+	 *
+	 * @param none
+	 * @return bool
+	 * @access public
+	 */
+	public function isBanned() {
+
+		// No ban registred for this session
+		if ( empty($this->session['SEC_BAN'] ) ) {
+			return FALSE;
+		}
+		// Reset the ban if this one has expired
+		else if ( $this->session['SEC_BAN'] < time() ) {
+
+			unset( $this->session['SEC_BAN'] );
+
+			// Push to global $_SESSION
+			$_SESSION = $this->session;
+
+			return FALSE;
+		}
+		// Ban in effect
+		else {
+			return TRUE;
+		}
+	}
+
+	/**
 	 * SHA512 With Salt Function
 	 * Generate a hash value (message digest)
 	 *
@@ -195,9 +291,70 @@ class Core_AuthService
 		if ( !empty($this->username) ) {
 
 			$credentials = $this->decryptSessionCredentials();
+			if ( empty($credentials['role']) ) {
+				$credentials['role'] = 'Guest';
+			}
 
+			// Level 1
 			if ( $credentials['username'] == $this->username && $credentials['key'] == $this->auth_key && $credentials['token'] == session_id() ) {
-				return TRUE;
+
+				// Level 2
+				$dbh = Core_DBH::getDBH();
+
+				switch ( $credentials['role'] )
+				{
+					case 'Admin':
+
+						// Fetch information from the database
+						$sth = $dbh->prepare("
+							SELECT username, last_ip, token
+							FROM " . DB_PREFIX . "admin
+							WHERE
+								admin_id = :admin_id
+							;");
+
+						$sth->bindParam( ':admin_id', $this->session['INFORMATION']['id'] );
+
+						$sth->execute();
+
+						$adminResult = $sth->fetchAll(PDO::FETCH_ASSOC);
+
+						// Verify
+						if ( $adminResult[0]['username'] == $this->username && $adminResult[0]['last_ip'] == $_SERVER['REMOTE_ADDR'] && $adminResult[0]['token'] == session_id() ) {
+							return TRUE;
+						}
+						else {
+							return FALSE;
+						}
+
+					case 'User':
+
+						// Fetch information from the database
+						$sth = $dbh->prepare("
+							SELECT username, last_ip, token
+							FROM " . DB_PREFIX . "user
+							WHERE
+								user_id = :user_id
+							;");
+
+						$sth->bindParam( ':user_id', $this->session['INFORMATION']['id'] );
+
+						$sth->execute();
+
+						$userResult = $sth->fetchAll(PDO::FETCH_ASSOC);
+
+						// Verify
+						if ( $userResult[0]['username'] == $this->username && $userResult[0]['last_ip'] == $_SERVER['REMOTE_ADDR'] && $userResult[0]['token'] == session_id() ) {
+							return TRUE;
+						}
+						else {
+							return FALSE;
+						}
+
+					default:
+						// Guest case
+						return FALSE;
+				}
 			}
 		}
 		return FALSE;
@@ -214,10 +371,11 @@ class Core_AuthService
 	 * @param String $lastname
 	 * @param String $lang
 	 * @param String $template
+	 * @param String $COM
 	 * @return void
 	 * @access public
 	 */
-	public function setSessionInfo( $id, $username, $firstname, $lastname, $lang, $template ) {
+	public function setSessionInfo( $id, $username, $firstname, $lastname, $lang, $template, $COM ) {
 		$info = array (
 				'id' => $id,
 				'firstname' => $firstname,
@@ -225,9 +383,13 @@ class Core_AuthService
 				);
 
 		$this->session['INFORMATION'] = $info;
-		$this->session['USERNAME'] = $username;
 		$this->session['LANG'] = $lang;
 		$this->session['TEMPLATE'] = $template;
+
+		$this->session['ID'] = $id; // Logging (user-id)
+		$this->session['COM'] = $COM; // Logging (Component Object Model)
+		$this->session['USERNAME'] = $username;	// Multi-purpose
+												// Logging (user-identifier)
 
 		$this->username = $username; // Update username var as well
 		$_SESSION = $this->session;
@@ -244,9 +406,12 @@ class Core_AuthService
 		if ( array_key_exists('INFORMATION', $this->session) ) {
 			unset (
 			$this->session['INFORMATION'],
-			$this->session['USERNAME'],
 			$this->session['LANG'],
-			$this->session['TEMPLATE']
+			$this->session['TEMPLATE'],
+
+			$this->session['ID'],
+			$this->session['COM'],
+			$this->session['USERNAME']
 			);
 		}
 
@@ -259,11 +424,11 @@ class Core_AuthService
 	 *
 	 * Note: should be called after Core_AuthService->setSessionInfo()
 	 *
-	 * @param String $role = 'Admin' | 'User' | 'Guest'
+	 * @param String $role
 	 * @return void
 	 * @access public
 	 */
-	public function setSessionPerms( $role = 'Guest' ) {
+	public function setSessionPerms( $role ) {
 		if ( !empty($this->username) ) {
 			if ( $role === 'Admin' || $role === 'User' || $role === 'Guest' ) {
 
