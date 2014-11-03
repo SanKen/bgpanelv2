@@ -8,12 +8,22 @@
 
 	<module_settings>
 		<title>Login</title>
+		<href>./login</href>
+		<icon>fa fa-sign-in fa-fw</icon>
 	</module_settings>
 
 	<module_options>
 		<empty_navbar>1</empty_navbar>
 		<no_sidebar>1</no_sidebar>
 	</module_options>
+
+	<module_dependencies>
+		<php_libs>
+			<securimage>
+				<require>securimage/securimage.php</require>
+			</securimage>
+		</php_libs>
+	</module_dependencies>
 
 	<class_definition filename="app/modules/login/login.class.php" classname="BGP_Module_Login"/>
 	<controller_class_definition filename="app/modules/login/login.controller.class.php" classname="BGP_Controller_Login"/>

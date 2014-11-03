@@ -27,8 +27,36 @@ body {
     }
 }
 
+#footer-copyleft-logo, #footer-bs3-logo {
+    position: relative;
+    top: -2px;
+}
+
 .navbar {
     margin-bottom: 0px;
+}
+
+.navbar-brand {
+    width: 250px;
+}
+
+.navbar-breadcrumbs {
+    list-style: outside none none;
+    padding: 15px 15px 0px 15px;
+}
+
+.navbar-breadcrumbs > .active {
+    color: #777;
+}
+
+.navbar-breadcrumbs > li + li:before {
+    color: #ccc;
+    content: "/ ";
+    padding: 0 5px;
+}
+
+.navbar-breadcrumbs > li {
+    display: inline-block;
 }
 
 .navbar-top-links li {
@@ -90,8 +118,19 @@ body {
     padding-left: 0;
 }
 
-.sidebar .sidebar-search {
-    padding: 15px;
+.sidebar .divider {
+    background-color: #e5e5e5;
+    height: 1px;
+    overflow: hidden;
+}
+
+.sidebar-header {
+    color: #777;
+    display: block;
+    font-size: 12px;
+    line-height: 1.42857;
+    padding: 3px 27px;
+    white-space: nowrap;
 }
 
 .sidebar ul li {
@@ -313,4 +352,42 @@ table.dataTable thead .sorting:after {
 
 .panel-yellow a:hover {
     color: #df8a13;
+}
+
+/*
+    http://meyerweb.com/eric/tools/css/reset/ 
+    http://webdesign.tutsplus.com/tutorials/htmlcss-tutorials/quick-tip-implement-a-sticky-back-to-top-button/
+    v2.0 | 20110126
+    License: none (public domain)
+*/
+
+/***********************************************************************************************/
+/* Button GO-TOP */
+/***********************************************************************************************/
+.go-top {
+    position: fixed;
+    bottom: 2em;
+    right: 2em;
+    text-decoration: none;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.3);
+    font-size: 12px;
+    padding: 1em;
+    display: none;
+}
+
+.go-top:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    text-decoration: none;
+    color: white;
+}
+
+.go-top:visited {
+    text-decoration: none;
+    color: white;
+}
+
+.go-top:link {
+    text-decoration: none;
+    color: white;
 }
