@@ -31,6 +31,7 @@ class Core_GUI
 {
 
 	// This Module Settings
+	private $module_name = '';
 	private $module_title = '';
 	private $module_icon = '';
 
@@ -56,6 +57,7 @@ class Core_GUI
 	function __construct( $bgp_module )
 	{
 		if ( !empty($bgp_module) && is_object($bgp_module) && is_subclass_of($bgp_module, 'BGP_Module') ) {
+			$this->module_name = $bgp_module::getModuleName( );
 			$this->module_title = $bgp_module::getModuleSetting( 'title' );
 			$this->module_icon = $bgp_module::getModuleSetting( 'icon' );
 			$this->module_dependencies = $bgp_module::getModuleDependencies( );
@@ -346,7 +348,7 @@ class Core_GUI
 						<span class="icon-bar"></span>
 						<span class="icon-bar"></span>
 					</button>
-					<a class="navbar-brand" href="#">BrightGamePanel V2</a>
+					<a class="navbar-brand" href="#">Bright Game Panel V2</a>
 				</div>
 
 <?php
@@ -637,31 +639,88 @@ class Core_GUI
 
 
 	/**
-	 * Get Sidebar Items
+	 * Display Module Tabs (Navigation)
 	 *
+	 * @param String $activeTab
+	 * @return String
+	 * @access public
+	 */
+	public function getTabs( $activeTab = '' ) {
+		$tabs = $this->getTabsItems();
+
+		if (!empty($tabs))
+		{
+//------------------------------------------------------------------------------------------------------------+
+?>
+					<!-- TABS -->
+					<ul class="nav nav-tabs" role="tablist">
+<?php
+//------------------------------------------------------------------------------------------------------------+
+
+			foreach ($tabs as $key => $tab)
+			{
+
+//------------------------------------------------------------------------------------------------------------+
+?>
+						<li role="presentation" <?php
+
+				if ($key == $activeTab) {
+					echo "class=\"active\"";
+				}
+
+				?>><a href="<?php
+
+				if ($key == $activeTab) {
+					echo "#";
+				}
+				else {
+					echo $tab['href'];
+				}
+
+				?>"><i class="<?php echo $tab['icon']; ?>"></i>&nbsp;<?php echo ucfirst( T_( $key ) ); ?></a></li>
+<?php
+//------------------------------------------------------------------------------------------------------------+
+
+			}
+
+//------------------------------------------------------------------------------------------------------------+
+?>
+					</ul>
+					<!-- END: TABS -->
+
+<?php
+//------------------------------------------------------------------------------------------------------------+
+		}
+	}
+
+
+
+	/**
+	 * Parse GUI Manifest Files As XML Obj
+	 * For Each Modules
+	 * 
 	 * @param none
 	 * @return array
 	 * @access private
 	 */
-	private function getSideBarItems()
+	private function parseGUIManifestFiles ()
 	{
 		$privilege = Core_AuthService::getSessionPrivilege();
 		$manifestFiles = array();
-
-		// Read all "sidebar.gui.xml" files under the "app/modules" directory
+		
 		$handle = opendir( MODS_DIR );
-
+		
 		if ($handle) {
-
+		
 			// Foreach modules
 			while (false !== ($entry = readdir($handle))) {
-
+		
 				// Dump specific directories
 				if ($entry != "." && $entry != "..") {
-
+		
 					// Analyze module name
 					$parts = explode('.', $entry);
-
+		
 					if (!empty( $parts[1] )) {
 						$role = $parts[0];
 						$module = $parts[1];
@@ -670,33 +729,49 @@ class Core_GUI
 						$role = NULL;
 						$module = $parts[0];
 					}
-
+		
 					// Case: "admin.module" OR "user.module"
 					if (!empty($role) && $privilege == ucfirst($role)) {
-
+		
 						// Get the manifest
-						$manifest = MODS_DIR . '/' . $role . '.' . $module . '/sidebar.gui.xml';
-
+						$manifest = MODS_DIR . '/' . $role . '.' . $module . '/gui.manifest.xml';
+		
 						if (is_file( $manifest )) {
 							$manifestFiles[] = simplexml_load_file( $manifest ); // Store the object
 						}
 					}
-
+		
 					// Case: "module"
 					else {
-
+		
 						// Get the manifest
-						$manifest = MODS_DIR . '/' . $module . '/sidebar.gui.xml';
-
+						$manifest = MODS_DIR . '/' . $module . '/gui.manifest.xml';
+		
 						if (is_file( $manifest )) {
 							$manifestFiles[] = simplexml_load_file( $manifest );
 						}
 					}
 				}
 			}
-
+		
 			closedir($handle);
 		}
+
+		return $manifestFiles;
+	}
+
+
+
+	/**
+	 * Get Sidebar Items
+	 *
+	 * @param none
+	 * @return array
+	 * @access private
+	 */
+	private function getSideBarItems()
+	{
+		$manifestFiles = $this->parseGUIManifestFiles();
 
 		if (!empty($manifestFiles)) {
 
@@ -773,6 +848,40 @@ class Core_GUI
 		}
 
 		return array();
+	}
+
+
+
+	/**
+	 * Get Tabs Items
+	 *
+	 * @param none
+	 * @return array
+	 * @access private
+	 */
+	private function getTabsItems()
+	{
+		$items = array();
+
+		// Get the manifest
+		$manifest = MODS_DIR . '/' . $this->module_name . '/gui.manifest.xml';
+		
+		if (is_file( $manifest )) {
+			$manifest = simplexml_load_file( $manifest );
+
+			$tabs = $manifest->{'module_tabs'};
+			
+			foreach ($tabs as $tab) {
+
+				foreach ($tab as $key => $value) {
+
+					$items[ $key ][ 'href' ] = (string)$manifest->{'module_tabs'}->$key->href;
+					$items[ $key ][ 'icon' ] = (string)$manifest->{'module_tabs'}->$key->icon;
+				}
+			}
+		}
+
+		return $items;
 	}
 
 

@@ -40,4 +40,98 @@ class BGP_Controller_Admin_Config extends BGP_Controller {
 		// Call parent constructor
 		parent::__construct( basename(__DIR__) );
 	}
+
+	public function updateSysConfig( $form )
+	{
+		$errors			= array();  	// array to hold validation errors
+		$data 			= array(); 		// array to pass back data
+		
+		$dbh = Core_DBH::getDBH();		// Get Database Handle
+
+		// Get templates
+		$templates = parse_ini_file( CONF_TEMPLATES_INI );
+		
+		// validate the variables ======================================================
+
+		if ( empty($form['panelName']) ) {
+			$errors['panelName'] = T_('Panel Name is required.');
+		}
+		
+		if ( empty($form['panelUrl']) ) {
+			$errors['panelUrl'] = T_('Panel URL is required.');
+		}
+
+		if ( empty($form['adminTemplate']) || !v::in($form['adminTemplate'], $templates) ) {
+			$errors['adminTemplate'] = T_('Bad Admin Template.');
+		}
+
+		if ( empty($form['userTemplate']) || !v::in($form['userTemplate'], $templates) ) {
+			$errors['userTemplate'] = T_('Bad User Template.');
+		}
+
+		if ( !empty($form['maintenanceMode']) ) {
+
+			if ($form['maintenanceMode'] != 'true' && $form['maintenanceMode'] != 'false') {
+
+				$errors['maintenanceMode'] = T_('Bad Maintenance Mode.');
+			}
+		}
+
+		// Apply the form ==============================================================
+
+		if (empty($errors))
+		{
+			// Database update
+
+			$db_data['panel_name']			= $form['panelName'];
+			$db_data['panel_url']			= $form['panelUrl'];
+			$db_data['admin_template'] 		= $form['adminTemplate'];
+			$db_data['user_template'] 		= $form['userTemplate'];
+
+			if ( !empty($form['maintenanceMode']) )
+			{
+				if ($form['maintenanceMode'] === 'true') {
+					$db_data['maintenance_mode'] = '1';
+				}
+				else {
+					$db_data['maintenance_mode'] = '0';
+				}
+			}
+
+			foreach ($db_data as $key => $value) {
+
+				$sth = $dbh->prepare( "UPDATE " . DB_PREFIX . "config SET value = :" . $key . " WHERE setting = '" . $key . "';" );
+				$sth->bindParam( ':' . $key, $value );
+				$sth->execute();
+			}
+
+			// Reload Current Template
+			$_SESSION['TEMPLATE'] = $db_data['admin_template'];
+		}
+
+		// return a response ===========================================================
+		
+		// response if there are errors
+		if (!empty($errors)) {
+		
+			// if there are items in our errors array, return those errors
+			$data['success'] = false;
+			$data['errors']  = $errors;
+
+			$data['msgType'] = 'warning';
+			$data['msg'] = T_('Bad Settings!');
+		}
+		else {
+		
+			// if there are no errors, return a message
+			$data['success'] = true;
+		
+			// notification
+			$data['msgType'] = 'success';
+			$data['msg'] = T_('Settings Updated Successfully!');
+		}
+		
+		// return all our data to an AJAX call
+		return json_encode($data);
+	}
 }

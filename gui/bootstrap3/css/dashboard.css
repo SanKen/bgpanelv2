@@ -36,8 +36,14 @@ body {
     margin-bottom: 0px;
 }
 
-.navbar-brand {
-    width: 250px;
+.nav-tabs {
+	margin-bottom: 20px;
+}
+
+@media(min-width:768px) {
+	.navbar-brand {
+	    width: 250px;
+	}
 }
 
 .navbar-breadcrumbs {

@@ -48,6 +48,11 @@ $js = new Core_JS_GUI();
  */
 $gui->getHeader();
 
+/**
+ * Build Page Tabs
+ */
+$gui->getTabs( 'general' );
+
 
 // Get templates
 $templates = parse_ini_file( CONF_TEMPLATES_INI );
@@ -114,18 +119,32 @@ $current_config = bgp_get_conf_array( $current_config );
 										</div>
 
 										<div class="row">
-											<div class="col-xs-8">
+											<div class="col-xs-12">
 												<div class="form-group">
 													<label><?php echo T_('Maintenance Mode'); ?></label>
 													<div class="radio">
 														<label>
-															<input type="radio" name="maintenanceMode" id="maintenanceMode1" value="on" checked>
+															<input type="radio" ng-model="formData.maintenanceMode" name="maintenanceMode" id="maintenanceMode1" ng-value="true" <?php 
+															
+															if ( $current_config['maintenance_mode'] == '1' ) {
+
+																echo "ng-checked=\"true\"";
+															}
+															
+															?>>
 															On
 														</label>
 													</div>
 													<div class="radio">
 														<label>
-															<input type="radio" name="maintenanceMode" id="maintenanceMode2" value="off">
+															<input type="radio" ng-model="formData.maintenanceMode" name="maintenanceMode" id="maintenanceMode2" ng-value="false" <?php 
+															
+															if ( $current_config['maintenance_mode'] == '0' ) {
+
+																echo "ng-checked=\"true\"";
+															}
+															
+															?>>
 															Off
 														</label>
 													</div>
